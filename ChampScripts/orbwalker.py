@@ -1,19 +1,10 @@
-import time
-import json
-import random
-import urllib3
-import json
-import urllib
-import ssl
-
 from winstealer import *
-from evade import *
 from commons.items import *
 from commons.skills import *
 from commons.utils import *
 from commons.targeting import *
 from commons.timer import Timer
-from API.summoner import *
+from time import time
 
 winstealer_script_info = {
     "script": "tefan's Orbwalker",
@@ -22,10 +13,10 @@ winstealer_script_info = {
 }
 
 
-ssl._create_default_https_context = ssl._create_unverified_context
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Globalsdm
+
+delay_percent = 0.115
 
 lasthit_key = 45
 harass_key = 46
@@ -35,7 +26,7 @@ laneclear_key = 47
 draw_killable_minion = False
 draw_killable_minion_fade = False
 
-click_speed = 0
+click_speed = 70
 ping = 0
 
 lowArmor = False
@@ -52,6 +43,10 @@ humanizer = Timer()
 last = 0
 atk_speed = 0
 
+# Exceptions
+extra_delay     = 0.0
+atk_speed_override = None
+
 
 def winstealer_load_cfg(cfg):
     global orbwalk_key, lasthit_key, harass_key, laneclear_key
@@ -65,8 +60,8 @@ def winstealer_load_cfg(cfg):
     draw_killable_minion = cfg.get_bool("draw_killable_minion", False)
     draw_killable_minion_fade = cfg.get_bool(
         "draw_killable_minion_fade", False)
-    click_speed = cfg.get_int("click_speed", 7)
-    ping = cfg.get_int("ping", 20)
+    click_speed = cfg.get_int("click_speed", 70)
+    ping = cfg.get_int("ping", 0)
 
     autoPriority = cfg.get_bool("autoPriority", True)
     lowArmor = cfg.get_bool("lowArmor", False)
@@ -100,7 +95,6 @@ def winstealer_draw_settings(game, ui):
     global click_speed, ping
     global draw_killable_minion, draw_killable_minion_fade
     global lowArmor, lowHealth, lowMr, autoPriority
-    ui.text("v 1.0")
     if ui.treenode("Key settings"):
         lasthit_key = ui.keyselect("Last hit key", lasthit_key)
         harass_key = ui.keyselect("Harass key", harass_key)
@@ -218,7 +212,7 @@ def get_best_auto_priority(game, atk_range=0):
     target = None
 
     if atk_range == 0:
-        atk_range = game.player.atkRange - 1.5 + game.player.gameplay_radius
+        atk_range = game.player.atkRange + game.player.gameplay_radius
 
     for champ in game.champs:
 
@@ -335,14 +329,8 @@ def get_best_targets_low_mr(game, atk_range=0):
     if target:
         return target
 
-
-def get_player_stats():
-    response = urllib.request.urlopen(
-        "https://127.0.0.1:2999/liveclientdata/activeplayer").read()
-    stats = json.loads(response)
-    return stats
-
 def attack(game, target, c_atk_time, b_windup_time):
+    now = time()
     global attacked
     game.click_at(False, game.world_to_screen(target.pos))
     attacked = True
@@ -372,25 +360,49 @@ def winstealer_update(game, ui):
     global orbwalk_key, lasthit_key, laneclear_key, harass_key
     global click_speed, ping
     global draw_killable_minion, draw_killable_minion_fade
-    global attackTimer, moveTimer, humanizer, attacked
+    global attackTimer, moveTimer, humanizer, attacked, lasta
     global last
-    global lowArmor, lowHealth, lowMr, autoPriority
+    global lowArmor, lowHealth, lowMr, autoPriority, extra_delay, atk_speed_override
+
+    now = time()
+    max_atk_speed = 0
 
     if draw_killable_minion_fade:
         draw_killable_minions(game, True)
     elif draw_killable_minion:
         draw_killable_minions(game, False)
+    
+    atk_speed_override = None
+    if game.player.name == 'senna':
+        extra_delay = 0.18
+    if game.player.name == 'jhin':
+        atk_speed_override = lambda player: 0.625 + 0.0177 * game.player.lvl
+    
+    has_lethal_tempo = getBuff(game.player, "TS/Perks/Styles/Precision/LethalTempo/LethalTempo.lua")
+
 
     if (
         game.player.is_visible
         and not game.isChatOpen
     ):
+
         if game.player.name == "graves":
-            atk_speed = get_player_stats()["championStats"]["attackSpeed"]+1.2
+            atk_speed = game.player.base_atk_speed * game.player.atk_speed_multi+1.2
         else:
-            atk_speed = get_player_stats()["championStats"]["attackSpeed"]
-        c_atk_time = max(1.0 / atk_speed, ping / 100)
-        b_windup_time = (1.0/atk_speed) * game.player.basic_atk_windup
+            atk_speed = game.player.base_atk_speed * game.player.atk_speed_multi
+        atk_speed = game.player.base_atk_speed * game.player.atk_speed_multi
+        b_windup_time = (1.0/game.player.base_atk_speed) * game.player.basic_atk_windup
+        c_atk_time = (1.0 + delay_percent/100)/atk_speed
+
+        if not atk_speed_override:
+            atk_speed = game.player.base_atk_speed if has_lethal_tempo else min(game.player.base_atk_speed, 2.5)
+        else:
+            atk_speed = atk_speed_override(game.player)
+        
+        atk_speed        = game.player.base_atk_speed*game.player.atk_speed_multi
+
+        if atk_speed == 0.0:
+            return
 
 
         # Harass
@@ -422,7 +434,7 @@ def winstealer_update(game, ui):
                 orbwalk(game, target, c_atk_time, b_windup_time)
 
         # Orbwalker
-        if game.is_key_down(orbwalk_key) :
+        if game.is_key_down(orbwalk_key)  :
             # Auto Priority
             if autoPriority:
                 target = get_best_auto_priority(
@@ -476,5 +488,3 @@ def winstealer_update(game, ui):
                 )
             )
             orbwalk(game, target, c_atk_time, b_windup_time)
-
-
