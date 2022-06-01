@@ -1,4 +1,4 @@
-from winstealer import *
+from lview import *
 from commons.items import *
 from commons.skills import *
 from commons.utils import *
@@ -6,7 +6,7 @@ from commons.targeting import *
 from commons.timer import Timer
 from time import time
 
-winstealer_script_info = {
+lview_script_info = {
     "script": "tefan's Orbwalker",
     "author": "tefan",
     "description": "Life's orbwalker but optimized by tefan",
@@ -48,7 +48,7 @@ extra_delay     = 0.0
 atk_speed_override = None
 
 
-def winstealer_load_cfg(cfg):
+def lview_load_cfg(cfg):
     global orbwalk_key, lasthit_key, harass_key, laneclear_key
     global click_speed, ping, lowArmor, lowHealth, lowMr, autoPriority
     global draw_killable_minion, draw_killable_minion_fade
@@ -69,7 +69,7 @@ def winstealer_load_cfg(cfg):
     lowMr = cfg.get_bool("lowMr", False)
 
 
-def winstealer_save_cfg(cfg):
+def lview_save_cfg(cfg):
     global orbwalk_key, harass_key, lasthit_key, laneclear_key
     global click_speed, ping
     global draw_killable_minion, draw_killable_minion_fade
@@ -90,7 +90,7 @@ def winstealer_save_cfg(cfg):
     cfg.set_bool("lowMr", lowMr)
 
 
-def winstealer_draw_settings(game, ui):
+def lview_draw_settings(game, ui):
     global orbwalk_key, harass_key, lasthit_key, laneclear_key
     global click_speed, ping
     global draw_killable_minion, draw_killable_minion_fade
@@ -356,7 +356,7 @@ def orbwalk(game, target, c_atk_time, b_windup_time):
                 
 
 
-def winstealer_update(game, ui):
+def lview_update(game, ui):
     global orbwalk_key, lasthit_key, laneclear_key, harass_key
     global click_speed, ping
     global draw_killable_minion, draw_killable_minion_fade
