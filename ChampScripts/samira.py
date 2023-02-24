@@ -288,14 +288,14 @@ def Combo(game):
         total_damage2 = EDamage(game, Etarget) + QDamage(game, Etarget)
         total_damage3 = EDamage(game, Etarget) + WDamage(game, Etarget)
 
-        if Etarget and IsReady(game,E) and IsReady(game,Q) and IsReady(game,W) and total_damage1:
+        if Etarget and IsReady(game,E) and IsReady(game,Q) and IsReady(game,W) and Etarget.health < total_damage1:
             E.move_and_trigger(game.world_to_screen(Etarget.pos))
 
-        elif Etarget and IsReady(game,E) and IsReady(game,Q) and total_damage2:
+        elif Etarget and IsReady(game,E) and IsReady(game,Q) and Etarget.health < total_damage2:
             E.move_and_trigger(game.world_to_screen(Etarget.pos))
 
 
-        elif Etarget and IsReady(game,E) and IsReady(game,W) and total_damage3:
+        elif Etarget and IsReady(game,E) and IsReady(game,W) and Etarget.health < total_damage3:
             E.move_and_trigger(game.world_to_screen(Etarget.pos))
 
     if use_w_in_combo and IsReady(game, W) and game.player.mana > w["Mana"]:
